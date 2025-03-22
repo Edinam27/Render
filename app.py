@@ -8282,11 +8282,22 @@ class RegistrationConstraintsManager:
     def optimized_connection(self):
         conn = None
         try:
-            conn = mysql.connector.connect(**MYSQL_CONFIG)
+            # Check if MYSQL_CONFIG is available
+            if MYSQL_CONFIG:
+                # Use MySQL connection
+                conn = mysql.connector.connect(**MYSQL_CONFIG)
+            else:
+                # Fall back to SQLite
+                conn = sqlite3.connect(self.db_path)
             yield conn
         finally:
-            if conn and conn.is_connected():
-                conn.close()
+            if conn:
+                # Close MySQL connection if it's connected
+                if MYSQL_CONFIG and hasattr(conn, 'is_connected') and conn.is_connected():
+                    conn.close()
+                # Close SQLite connection
+                elif not MYSQL_CONFIG and isinstance(conn, sqlite3.Connection):
+                    conn.close()
             self._optimize_memory()
 
     def _optimize_memory(self):
@@ -8303,8 +8314,12 @@ class RegistrationConstraintsManager:
         """
         with self.optimized_connection() as conn:
             cursor = conn.cursor()
+            
+            # Use appropriate placeholder based on database type
+            placeholder = "%s" if MYSQL_CONFIG else "?"
+            
             cursor.execute(
-                "SELECT approval_status FROM student_info WHERE student_id = %s",
+                f"SELECT approval_status FROM student_info WHERE student_id = {placeholder}",
                 (student_id,),
             )
             result = cursor.fetchone()
@@ -8352,10 +8367,13 @@ class RegistrationConstraintsManager:
         """
         with self.optimized_connection() as conn:
             cursor = conn.cursor()
+            
+            # Use appropriate placeholder based on database type
+            placeholder = "%s" if MYSQL_CONFIG else "?"
 
             # Check if student info exists and is approved
             cursor.execute(
-                "SELECT approval_status FROM student_info WHERE student_id = ?",
+                f"SELECT approval_status FROM student_info WHERE student_id = {placeholder}",
                 (student_id,),
             )
             student_info = cursor.fetchone()
@@ -8367,10 +8385,10 @@ class RegistrationConstraintsManager:
 
             # Check existing course registrations
             cursor.execute(
-                """
+                f"""
                 SELECT approval_status 
                 FROM course_registration 
-                WHERE student_id = ? 
+                WHERE student_id = {placeholder} 
                 ORDER BY date_registered DESC 
                 LIMIT 1
                 """,
@@ -8392,6 +8410,9 @@ class RegistrationConstraintsManager:
         """
         with self.optimized_connection() as conn:
             cursor = conn.cursor()
+            
+            # Use appropriate placeholder based on database type
+            placeholder = "%s" if MYSQL_CONFIG else "?"
 
             status = {
                 "has_student_info": False,
@@ -8403,10 +8424,10 @@ class RegistrationConstraintsManager:
 
             # Check student info
             cursor.execute(
-                """
+                f"""
                 SELECT approval_status, created_at 
                 FROM student_info 
-                WHERE student_id = ?
+                WHERE student_id = {placeholder}
                 """,
                 (student_id,),
             )
@@ -8419,10 +8440,10 @@ class RegistrationConstraintsManager:
 
             # Check course registration
             cursor.execute(
-                """
+                f"""
                 SELECT approval_status, date_registered 
                 FROM course_registration 
-                WHERE student_id = ? 
+                WHERE student_id = {placeholder} 
                 ORDER BY date_registered DESC 
                 LIMIT 1
                 """,
@@ -8441,15 +8462,18 @@ class RegistrationConstraintsManager:
 
             return status
 
-    # Update other methods to use %s placeholders instead of ? for MySQL
     def check_existing_student_info(self, student_id: str) -> bool:
         """
         Returns True if student info already exists.
         """
         with self.optimized_connection() as conn:
             cursor = conn.cursor()
+            
+            # Use appropriate placeholder based on database type
+            placeholder = "%s" if MYSQL_CONFIG else "?"
+            
             cursor.execute(
-                "SELECT 1 FROM student_info WHERE student_id = %s", (student_id,)
+                f"SELECT 1 FROM student_info WHERE student_id = {placeholder}", (student_id,)
             )
             return cursor.fetchone() is not None
 
@@ -8459,8 +8483,12 @@ class RegistrationConstraintsManager:
         """
         with self.optimized_connection() as conn:
             cursor = conn.cursor()
+            
+            # Use appropriate placeholder based on database type
+            placeholder = "%s" if MYSQL_CONFIG else "?"
+            
             cursor.execute(
-                "SELECT 1 FROM course_registration WHERE student_id = %s", (student_id,)
+                f"SELECT 1 FROM course_registration WHERE student_id = {placeholder}", (student_id,)
             )
             return cursor.fetchone() is not None
 
@@ -8474,12 +8502,12 @@ class RegistrationConstraintsManager:
             # Both SELECT statements are now modified to return three columns.
             cursor.execute(
                 """
-                    SELECT ghana_card_path, passport_photo_path, certificate_path
-                    FROM student_info
-                    UNION
-                    SELECT receipt_path, NULL, NULL
-                    FROM course_registration
-                    """
+                SELECT ghana_card_path, passport_photo_path, certificate_path
+                FROM student_info
+                UNION
+                SELECT receipt_path, NULL, NULL
+                FROM course_registration
+                """
             )
             db_files = set()
             for row in cursor.fetchall():
