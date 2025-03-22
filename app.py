@@ -8533,6 +8533,9 @@ class RegistrationConstraintsManager:
                             print(f"Error removing file {file_path}: {str(e)}")
 
 
+# Initialize MySQL first, which will set MYSQL_CONFIG to None if it fails
+    mysql_available = init_mysql_db()
+    
 def admin_login():
     st.sidebar.subheader("Admin Login")
     username = st.sidebar.text_input("Username", key="login_username")
