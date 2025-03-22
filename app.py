@@ -70,6 +70,7 @@ MYSQL_CONFIG = {
 def init_mysql_db():
     """
     Initialize the MySQL database if it doesn't exist.
+    Returns True if MySQL is available, False if it falls back to SQLite.
     """
     global MYSQL_CONFIG  # Proper place for global declaration
     
@@ -89,11 +90,13 @@ def init_mysql_db():
         conn.close()
         
         print(f"Database '{MYSQL_CONFIG['database']}' initialized successfully")
-    except mysql.connector.Error as err:
+        return True
+    except Exception as err:
         print(f"Error initializing MySQL database: {err}")
         # Fall back to SQLite if MySQL connection fails
         print("Falling back to SQLite database")
         MYSQL_CONFIG = None  # No need for global here since we already declared it
+        return False
 
 # Call this function before init_db to ensure the database exists
 init_mysql_db()
@@ -118,7 +121,7 @@ def get_db_connection(max_retries=3, retry_delay=1):
                 # Fall back to SQLite
                 conn = sqlite3.connect("student_registration.db")
             break
-        except (mysql.connector.Error, sqlite3.Error) as e:
+        except Exception as e:
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
             else:
