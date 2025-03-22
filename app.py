@@ -102,8 +102,7 @@ def init_mysql_db():
         MYSQL_CONFIG = None
         return False
 
-# Call this function before init_db to ensure the database exists
-init_mysql_db()
+
 
 @contextmanager
 def get_db_connection(max_retries=3, retry_delay=1):
@@ -8610,5 +8609,6 @@ def main():
 
 
 if __name__ == "__main__":
+    init_mysql_db()
     init_db()
     main()
