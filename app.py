@@ -66,19 +66,23 @@ MYSQL_CONFIG = {
     "port": 3306
 }
 
-# Function to initialize the MySQL database if it doesn't exist
 def init_mysql_db():
     """
     Initialize the MySQL database if it doesn't exist.
     Returns True if MySQL is available, False if it falls back to SQLite.
     """
-    global MYSQL_CONFIG  # Proper place for global declaration
+    global MYSQL_CONFIG
+    
+    # Check if MYSQL_CONFIG is None or not defined
+    if MYSQL_CONFIG is None:
+        print("MySQL configuration is not available. Falling back to SQLite database.")
+        return False
     
     # Create a connection without specifying the database
-    temp_config = MYSQL_CONFIG.copy()
-    temp_config.pop("database", None)
-    
     try:
+        temp_config = MYSQL_CONFIG.copy()
+        temp_config.pop("database", None)
+        
         conn = mysql.connector.connect(**temp_config)
         cursor = conn.cursor()
         
@@ -95,7 +99,7 @@ def init_mysql_db():
         print(f"Error initializing MySQL database: {err}")
         # Fall back to SQLite if MySQL connection fails
         print("Falling back to SQLite database")
-        MYSQL_CONFIG = None  # No need for global here since we already declared it
+        MYSQL_CONFIG = None
         return False
 
 # Call this function before init_db to ensure the database exists
