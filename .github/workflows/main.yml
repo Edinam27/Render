@@ -33,6 +33,4 @@ jobs:
         run: |
           streamlit run app.py &
 
-      - name: Keep the server running (for self-hosted deployments)
-        if: success()
-        run: sleep infinity
+
